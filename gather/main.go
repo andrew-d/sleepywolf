@@ -12,13 +12,18 @@ import (
 	"github.com/andrew-d/sleepywolf/common"
 )
 
+type registeredStruct struct {
+	Inst interface{}
+	Name string
+}
+
 type InfoGatherer struct {
-	registered []interface{}
+	registered []registeredStruct
 }
 
 func NewInfoGatherer() InfoGatherer {
 	return InfoGatherer{
-		registered: []interface{}{},
+		registered: []registeredStruct{},
 	}
 }
 
@@ -72,8 +77,11 @@ func CheckValidHandler(f interface{}, skipReceiver bool) error {
 	return nil
 }
 
-func (i *InfoGatherer) Register(s interface{}) {
-	i.registered = append(i.registered, s)
+func (i *InfoGatherer) Register(name string, s interface{}) {
+	i.registered = append(i.registered, registeredStruct{
+		Name: name,
+		Inst: s,
+	})
 }
 
 func (i *InfoGatherer) Run(w io.Writer) (err error) {
@@ -88,9 +96,9 @@ func (i *InfoGatherer) Run(w io.Writer) (err error) {
 	}
 
 	for _, s := range i.registered {
-		ty := reflect.TypeOf(s)
+		ty := reflect.TypeOf(s.Inst)
 		curr := common.StructInfo{
-			StructName: ty.Name(),
+			StructName: s.Name,
 			Handlers:   []common.HandlerInfo{},
 			Warnings:   []string{},
 		}
