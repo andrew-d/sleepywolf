@@ -1,7 +1,7 @@
 package common
 
 type HandlerInfo struct {
-	Name string
+	Name   string
 	Params int
 }
 

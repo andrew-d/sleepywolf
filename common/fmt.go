@@ -1,8 +1,8 @@
 package common
 
 import (
-	"errors"
 	"bytes"
+	"errors"
 	"io"
 	"os/exec"
 )

@@ -123,7 +123,7 @@ func (i *InfoGatherer) Run(w io.Writer) (err error) {
 			// Note: the -1 is to account for the implicit "reciever" param,
 			// which is the first parameter of the bare function.
 			curr.Handlers = append(curr.Handlers, common.HandlerInfo{
-				Name: mname,
+				Name:   mname,
 				Params: reflect.TypeOf(miface).NumIn() - 1,
 			})
 		}
