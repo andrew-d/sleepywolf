@@ -1,4 +1,4 @@
-package sleepywolf
+package gather
 
 import (
 	"net/http"
@@ -13,12 +13,12 @@ func TestCheckValidHandler(t *testing.T) {
 
 	err = CheckValidHandler(1234, false)
 	if assert.Error(t, err, "an error was expected") {
-		assert.Equal(t, err.Error(), "not a function")
+		assert.Equal(t, err.Error(), "value is not a function: int")
 	}
 
 	err = CheckValidHandler(func() int { return 1 }, false)
 	if assert.Error(t, err, "an error was expected") {
-		assert.Equal(t, err.Error(), "should return nothing")
+		assert.Equal(t, err.Error(), "function should have 0 return values")
 	}
 
 	err = CheckValidHandler(func(a int) { return }, false)
