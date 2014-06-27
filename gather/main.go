@@ -177,7 +177,7 @@ func (i *InfoGatherer) Run(w io.Writer) (err error) {
 
 			*res = &common.FuncInfo{
 				Name:   name,
-				Params: f.Func.Type().NumIn(),
+				Params: f.Func.Type().NumIn() - 1,
 			}
 		}
 		checkBeforeFunc("BeforeOne", &curr.BeforeOne)
