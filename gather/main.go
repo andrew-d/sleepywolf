@@ -127,7 +127,7 @@ func (i *InfoGatherer) Run(w io.Writer) (err error) {
 		ty := reflect.TypeOf(s.Inst)
 		curr := common.StructInfo{
 			StructName: s.Name,
-			Handlers:   []common.HandlerInfo{},
+			Handlers:   []common.FuncInfo{},
 			Warnings:   []string{},
 		}
 
@@ -150,24 +150,24 @@ func (i *InfoGatherer) Run(w io.Writer) (err error) {
 
 			// Note: the -1 is to account for the implicit "reciever" param,
 			// which is the first parameter of the bare function.
-			curr.Handlers = append(curr.Handlers, common.HandlerInfo{
+			curr.Handlers = append(curr.Handlers, common.FuncInfo{
 				Name:   mname,
 				Params: reflect.TypeOf(miface).NumIn() - 1,
 			})
 		}
 
 		// Check for 'Before' functions
-		checkBeforeFunc := func(name string, res *bool) {
+		checkBeforeFunc := func(name string, res **common.FuncInfo) {
 			f, has := ty.MethodByName(name)
 			if !has {
-				*res = false
+				*res = nil
 				return
 			}
 
 			// Check that it's valid.
 			iface := f.Func.Interface()
 			if valid := CheckValidBeforeFunc(iface, true); valid != nil {
-				*res = false
+				*res = nil
 				curr.Warnings = append(curr.Warnings, fmt.Sprintf(
 					"before function '%s' is present but invalid: %s",
 					name, valid.Error(),
@@ -175,11 +175,14 @@ func (i *InfoGatherer) Run(w io.Writer) (err error) {
 				return
 			}
 
-			*res = true
+			*res = &common.FuncInfo{
+				Name:   name,
+				Params: f.Func.Type().NumIn(),
+			}
 		}
-		checkBeforeFunc("BeforeOne", &curr.HasBeforeOne)
-		checkBeforeFunc("BeforeMany", &curr.HasBeforeMany)
-		checkBeforeFunc("BeforeAll", &curr.HasBeforeAll)
+		checkBeforeFunc("BeforeOne", &curr.BeforeOne)
+		checkBeforeFunc("BeforeMany", &curr.BeforeMany)
+		checkBeforeFunc("BeforeAll", &curr.BeforeAll)
 
 		output = append(output, curr)
 	}

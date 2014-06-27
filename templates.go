@@ -37,20 +37,33 @@ import (
 	"github.com/zenazn/goji/web"
 )
 
+{{define "BeforeFunc"}}
+	{{with .}}
+		{{if .Params | eq 3}}
+		if !self.{{.Name}}(c, w, r) { return }
+		{{else}}
+		if !self.{{.Name}}(w, r) { return }
+		{{end}}
+	{{end}}
+{{end}}
+
 {{$prefix := .UrlPrefix}}
 
 {{range .Structs}}
 func (self *{{.StructName}}) RegisterOn(mux *web.Mux) {
 	{{$struct := .}}
+
 	{{range .Handlers}}
 		handlerFor{{.Name}} := func(c web.C, w http.ResponseWriter, r *http.Request) {
-			{{if $struct.HasBeforeAll}}
-			if !self.Before(c, w, r) {
-				return
-			}
-			{{end}}
+			{{if HasBeforeType .Name "BeforeAll"}}{{template "BeforeFunc" $struct.BeforeAll}}{{end}}
+			{{if HasBeforeType .Name "BeforeAll"}}{{template "BeforeFunc" $struct.BeforeOne}}{{end}}
+			{{if HasBeforeType .Name "BeforeAll"}}{{template "BeforeFunc" $struct.BeforeMany}}{{end}}
 
-			{{if .Params | eq 3}} self.{{.Name}}(c, w, r) {{else}} self.{{.Name}}(w, r) {{end}}
+			{{if .Params | eq 3}}
+				self.{{.Name}}(c, w, r)
+			{{else}}
+				self.{{.Name}}(w, r)
+			{{end}}
 		}
 		mux.{{RegisterFuncFor .Name}}("{{$prefix}}/{{UrlFor $struct.StructName .Name}}", handlerFor{{.Name}})
 	{{end}}

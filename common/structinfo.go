@@ -1,15 +1,15 @@
 package common
 
-type HandlerInfo struct {
+type FuncInfo struct {
 	Name   string
 	Params int
 }
 
 type StructInfo struct {
-	StructName    string
-	Handlers      []HandlerInfo
-	HasBeforeOne  bool
-	HasBeforeMany bool
-	HasBeforeAll  bool
-	Warnings      []string
+	StructName string
+	Handlers   []FuncInfo
+	BeforeOne  *FuncInfo
+	BeforeMany *FuncInfo
+	BeforeAll  *FuncInfo
+	Warnings   []string
 }

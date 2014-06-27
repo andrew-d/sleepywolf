@@ -30,6 +30,7 @@ func usage() {
 	os.Exit(1)
 }
 
+// Get the name of the function to call to register the given handler
 func RegisterFuncFor(funcName string) (string, error) {
 	mapping := map[string]string{
 		"Delete":  "Delete",
@@ -47,6 +48,7 @@ func RegisterFuncFor(funcName string) (string, error) {
 	return s, nil
 }
 
+// Helper function to generate a URL for a given resource / function pair
 func UrlFor(structName, funcName string) (string, error) {
 	mapping := map[string]string{
 		"Delete":  "%s/:id",
@@ -69,6 +71,30 @@ func UrlFor(structName, funcName string) (string, error) {
 	// TODO: inflect the name of the resource to generate a real url
 
 	return fmt.Sprintf(format, strings.ToLower(structName)), nil
+}
+
+// Helper function that, given the name of a "Before" function and a handler name,
+// returns whether or not the handler should execute the Before function.
+func HasBeforeType(funcName, beforeType string) (bool, error) {
+	if beforeType == "BeforeAll" {
+		return true, nil
+	}
+
+	mapping := map[string]string{
+		"Delete":  "BeforeOne",
+		"GetMany": "BeforeMany",
+		"GetOne":  "BeforeOne",
+		"Patch":   "BeforeOne",
+		"Post":    "BeforeMany",
+		"Put":     "BeforeOne",
+	}
+
+	f, ok := mapping[funcName]
+	if !ok {
+		return false, fmt.Errorf("unknown function name: %s", funcName)
+	}
+
+	return f == beforeType, nil
 }
 
 func main() {
@@ -179,9 +205,9 @@ func main() {
 			}
 			fmt.Fprintf(os.Stderr, "\n")
 
-			fmt.Fprintf(os.Stderr, "    BeforeOne  : %t\n", s.HasBeforeOne)
-			fmt.Fprintf(os.Stderr, "    BeforeMany : %t\n", s.HasBeforeMany)
-			fmt.Fprintf(os.Stderr, "    BeforeAll  : %t\n", s.HasBeforeAll)
+			fmt.Fprintf(os.Stderr, "    BeforeOne  : %t\n", s.BeforeOne != nil)
+			fmt.Fprintf(os.Stderr, "    BeforeMany : %t\n", s.BeforeMany != nil)
+			fmt.Fprintf(os.Stderr, "    BeforeAll  : %t\n", s.BeforeAll != nil)
 
 			if len(s.Warnings) > 0 {
 				fmt.Fprintf(os.Stderr, "    Warnings   :\n")
@@ -196,6 +222,7 @@ func main() {
 	funcMap := template.FuncMap{
 		"RegisterFuncFor": RegisterFuncFor,
 		"UrlFor":          UrlFor,
+		"HasBeforeType":   HasBeforeType,
 	}
 	tmpl = template.Must(template.New("gather_gen.go").
 		Funcs(funcMap).
