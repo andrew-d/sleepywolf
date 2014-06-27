@@ -27,23 +27,8 @@ func NewInfoGatherer() InfoGatherer {
 	}
 }
 
-// Checks whether the given function is a valid handler function for Goji.
-// Will return nil if it is, otherwise an error specifying why not.  In order
-// to test member functions, pass "true" as the second argument.
-func CheckValidHandler(f interface{}, skipReceiver bool) error {
-	ty := reflect.TypeOf(f)
-
-	// The function should be a function...
-	if ty.Kind() != reflect.Func {
-		return fmt.Errorf("value is not a function: %s", ty.Kind().String())
-	}
-
-	// ... should return nothing ...
-	if ty.NumOut() != 0 {
-		return fmt.Errorf("function should have 0 return values")
-	}
-
-	// ... and be of the form:
+func checkFunctionParams(ty reflect.Type, skipReceiver bool) error {
+	// Should be of the form:
 	//     func(c web.C, w http.ResponseWriter, r *http.Request)
 	// or
 	//     func(w http.ResponseWriter, r *http.Request)
@@ -75,6 +60,49 @@ func CheckValidHandler(f interface{}, skipReceiver bool) error {
 	}
 
 	return nil
+}
+
+// Checks whether the given function is a valid handler function for Goji.
+// Will return nil if it is, otherwise an error specifying why not.  In order
+// to test member functions, pass "true" as the second argument.
+func CheckValidHandler(f interface{}, skipReceiver bool) error {
+	ty := reflect.TypeOf(f)
+
+	// The function should be a function...
+	if ty.Kind() != reflect.Func {
+		return fmt.Errorf("value is not a function: %s", ty.Kind().String())
+	}
+
+	// ... should return nothing ...
+	if ty.NumOut() != 0 {
+		return fmt.Errorf("function should have 0 return values")
+	}
+
+	// ... and have correct parameters.
+	return checkFunctionParams(ty, skipReceiver)
+}
+
+// Check whether the given function is a valid Before-style function.  Will
+// return nil if it is, otherwise an error specifying why not.
+func CheckValidBeforeFunc(f interface{}, skipReceiver bool) error {
+	ty := reflect.TypeOf(f)
+
+	// The function should be a function...
+	if ty.Kind() != reflect.Func {
+		return fmt.Errorf("value is not a function: %s", ty.Kind().String())
+	}
+
+	// ... should return a single bool ...
+	if ty.NumOut() != 1 {
+		return fmt.Errorf("function should have 1 return values")
+	}
+	if ty.Out(0).Kind() != reflect.Bool {
+		return fmt.Errorf("function's return value should be 'bool', not: %s",
+			ty.Out(0).String())
+	}
+
+	// ... and have correct parameters.
+	return checkFunctionParams(ty, skipReceiver)
 }
 
 func (i *InfoGatherer) Register(name string, s interface{}) {
@@ -129,9 +157,29 @@ func (i *InfoGatherer) Run(w io.Writer) (err error) {
 		}
 
 		// Check for 'Before' functions
-		_, curr.HasBeforeOne = ty.MethodByName("BeforeOne")
-		_, curr.HasBeforeMany = ty.MethodByName("BeforeMany")
-		_, curr.HasBeforeAll = ty.MethodByName("BeforeAll")
+		checkBeforeFunc := func(name string, res *bool) {
+			f, has := ty.MethodByName(name)
+			if !has {
+				*res = false
+				return
+			}
+
+			// Check that it's valid.
+			iface := f.Func.Interface()
+			if valid := CheckValidBeforeFunc(iface, true); valid != nil {
+				*res = false
+				curr.Warnings = append(curr.Warnings, fmt.Sprintf(
+					"before function '%s' is present but invalid: %s",
+					name, valid.Error(),
+				))
+				return
+			}
+
+			*res = true
+		}
+		checkBeforeFunc("BeforeOne", &curr.HasBeforeOne)
+		checkBeforeFunc("BeforeMany", &curr.HasBeforeMany)
+		checkBeforeFunc("BeforeAll", &curr.HasBeforeAll)
 
 		output = append(output, curr)
 	}

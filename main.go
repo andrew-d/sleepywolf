@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"strings"
 	"text/template"
 
 	"github.com/andrew-d/sleepywolf/common"
@@ -18,6 +19,7 @@ var (
 	extractFnameRe = regexp.MustCompile(`(.*)(\.go)$`)
 	verbose        = flag.Bool("v", false, "print information while generating")
 	keepGenerated  = flag.Bool("keep", false, "keep the generated temp files")
+	prefix         = flag.String("prefix", "/api", "prefix for generated URLs")
 )
 
 func usage() {
@@ -26,6 +28,47 @@ func usage() {
 	fmt.Fprintf(os.Stderr, "%s generates Go code to link up resources with Goji\n\n", os.Args[0])
 	flag.PrintDefaults()
 	os.Exit(1)
+}
+
+func RegisterFuncFor(funcName string) (string, error) {
+	mapping := map[string]string{
+		"Delete":  "Delete",
+		"GetMany": "Get",
+		"GetOne":  "Get",
+		"Patch":   "Patch",
+		"Post":    "Post",
+		"Put":     "Put",
+	}
+
+	s, ok := mapping[funcName]
+	if !ok {
+		return "", fmt.Errorf("unknown function name: %s", funcName)
+	}
+	return s, nil
+}
+
+func UrlFor(structName, funcName string) (string, error) {
+	mapping := map[string]string{
+		"Delete":  "%s/:id",
+		"GetMany": "%s",
+		"GetOne":  "%s/:id",
+		"Patch":   "%s/:id",
+		"Post":    "%s",
+		"Put":     "%s/:id",
+	}
+
+	format, ok := mapping[funcName]
+	if !ok {
+		return "", fmt.Errorf("unknown function name: %s", funcName)
+	}
+
+	// Remove any trailing "Resource" and lower-case
+	structName = strings.TrimSuffix(structName, "Resource")
+	structName = strings.ToLower(structName)
+
+	// TODO: inflect the name of the resource to generate a real url
+
+	return fmt.Sprintf(format, strings.ToLower(structName)), nil
 }
 
 func main() {
@@ -74,6 +117,11 @@ func main() {
 		PackageName string
 		StructNames []string
 	}{importPath, packageName, structs})
+
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "couldn't execute template: %s\n", err)
+		return
+	}
 
 	// Step 4: Create a temporary file and write the formatted code to it.
 	tmpFile, err := common.TempFileWithSuffix("", "gather_gen", ".go")
@@ -145,5 +193,27 @@ func main() {
 	}
 
 	// Step 7: Generate the final output
+	funcMap := template.FuncMap{
+		"RegisterFuncFor": RegisterFuncFor,
+		"UrlFor":          UrlFor,
+	}
+	tmpl = template.Must(template.New("gather_gen.go").
+		Funcs(funcMap).
+		Parse(finalTemplate))
+	finalBuff := bytes.Buffer{}
+	err = tmpl.Execute(&finalBuff, struct {
+		PackageName string
+		Structs     []common.StructInfo
+		UrlPrefix   string
+	}{packageName, structInfos, *prefix})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "couldn't execute template: %s\n", err)
+		return
+	}
 
+	err = common.GoFmt(os.Stdout, &finalBuff)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "couldn't format final code: %s\n", err)
+		return
+	}
 }
