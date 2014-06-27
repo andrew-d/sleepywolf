@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -17,9 +18,11 @@ import (
 
 var (
 	extractFnameRe = regexp.MustCompile(`(.*)(\.go)$`)
-	verbose        = flag.Bool("v", false, "print information while generating")
-	keepGenerated  = flag.Bool("keep", false, "keep the generated temp files")
-	prefix         = flag.String("prefix", "/api", "prefix for generated URLs")
+
+	verbose       = flag.Bool("v", false, "print information while generating")
+	keepGenerated = flag.Bool("keep", false, "keep the generated temp files")
+	prefix        = flag.String("prefix", "/api", "prefix for generated URLs")
+	writeToStdout = flag.Bool("stdout", false, "write the output to stdout instead of a file")
 )
 
 func usage() {
@@ -107,7 +110,11 @@ func main() {
 
 	inputPath := filepath.ToSlash(args[0])
 	outputPath := extractFnameRe.ReplaceAllString(args[0], `${1}_goji.go`)
-	_ = outputPath
+	if *writeToStdout {
+		fmt.Fprint(os.Stderr, "Output File   : STDOUT\n")
+	} else {
+		fmt.Fprintf(os.Stderr, "Output File   : %s\n", outputPath)
+	}
 
 	// Step 1: obtain information about the input file
 	packageName, structs, err := GetFileInfo(inputPath)
@@ -218,7 +225,22 @@ func main() {
 		}
 	}
 
-	// Step 7: Generate the final output
+	// Step 7a: Optionally open the output file.
+	var outFile io.Writer
+	if *writeToStdout {
+		outFile = os.Stdout
+	} else {
+		f, err := os.Create(outputPath)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "couldn't create output file: %s\n", err)
+			return
+		}
+		defer f.Close()
+
+		outFile = f
+	}
+
+	// Step 7b: Generate the final output
 	funcMap := template.FuncMap{
 		"RegisterFuncFor": RegisterFuncFor,
 		"UrlFor":          UrlFor,
@@ -227,18 +249,20 @@ func main() {
 	tmpl = template.Must(template.New("gather_gen.go").
 		Funcs(funcMap).
 		Parse(finalTemplate))
+
 	finalBuff := bytes.Buffer{}
 	err = tmpl.Execute(&finalBuff, struct {
 		PackageName string
 		Structs     []common.StructInfo
 		UrlPrefix   string
 	}{packageName, structInfos, *prefix})
+
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "couldn't execute template: %s\n", err)
 		return
 	}
 
-	err = common.GoFmt(os.Stdout, &finalBuff)
+	err = common.GoFmt(outFile, &finalBuff)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "couldn't format final code: %s\n", err)
 		return
