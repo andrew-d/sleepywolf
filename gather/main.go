@@ -94,7 +94,7 @@ func CheckValidBeforeFunc(f interface{}, skipReceiver bool) error {
 
 	// ... should return a single bool ...
 	if ty.NumOut() != 1 {
-		return fmt.Errorf("function should have 1 return values")
+		return fmt.Errorf("function should have 1 return value")
 	}
 	if ty.Out(0).Kind() != reflect.Bool {
 		return fmt.Errorf("function's return value should be 'bool', not: %s",
@@ -115,7 +115,8 @@ func (i *InfoGatherer) Register(name string, s interface{}) {
 func (i *InfoGatherer) Run(w io.Writer) (err error) {
 	output := []common.StructInfo{}
 	checkMethods := []string{
-		"Delete",
+		"DeleteOne",
+		"DeleteMany",
 		"GetMany",
 		"GetOne",
 		"Patch",

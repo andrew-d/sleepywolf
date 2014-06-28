@@ -36,12 +36,13 @@ func usage() {
 // Get the name of the function to call to register the given handler
 func RegisterFuncFor(funcName string) (string, error) {
 	mapping := map[string]string{
-		"Delete":  "Delete",
-		"GetMany": "Get",
-		"GetOne":  "Get",
-		"Patch":   "Patch",
-		"Post":    "Post",
-		"Put":     "Put",
+		"DeleteOne":  "Delete",
+		"DeleteMany": "Delete",
+		"GetMany":    "Get",
+		"GetOne":     "Get",
+		"Patch":      "Patch",
+		"Post":       "Post",
+		"Put":        "Put",
 	}
 
 	s, ok := mapping[funcName]
@@ -54,12 +55,13 @@ func RegisterFuncFor(funcName string) (string, error) {
 // Helper function to generate a URL for a given resource / function pair
 func UrlFor(structName, funcName string) (string, error) {
 	mapping := map[string]string{
-		"Delete":  "%s/:id",
-		"GetMany": "%s",
-		"GetOne":  "%s/:id",
-		"Patch":   "%s/:id",
-		"Post":    "%s",
-		"Put":     "%s/:id",
+		"DeleteOne":  "%s/:id",
+		"DeleteMany": "%s",
+		"GetMany":    "%s",
+		"GetOne":     "%s/:id",
+		"Patch":      "%s/:id",
+		"Post":       "%s",
+		"Put":        "%s/:id",
 	}
 
 	format, ok := mapping[funcName]
@@ -84,12 +86,13 @@ func HasBeforeType(funcName, beforeType string) (bool, error) {
 	}
 
 	mapping := map[string]string{
-		"Delete":  "BeforeOne",
-		"GetMany": "BeforeMany",
-		"GetOne":  "BeforeOne",
-		"Patch":   "BeforeOne",
-		"Post":    "BeforeMany",
-		"Put":     "BeforeOne",
+		"DeleteOne":  "BeforeOne",
+		"DeleteMany": "BeforeMany",
+		"GetMany":    "BeforeMany",
+		"GetOne":     "BeforeOne",
+		"Patch":      "BeforeOne",
+		"Post":       "BeforeMany",
+		"Put":        "BeforeOne",
 	}
 
 	f, ok := mapping[funcName]
