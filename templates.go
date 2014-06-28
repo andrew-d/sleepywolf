@@ -12,15 +12,13 @@ import (
 	"github.com/andrew-d/sleepywolf/gather"
 
 	// This is the package we're introspecting
-	"{{.ImportPath}}"
+	target "{{.ImportPath}}"
 )
-
-{{$pn := .PackageName}}
 
 func main() {
 	g := gather.NewInfoGatherer()
 {{range .StructNames}}
-	g.Register("{{.}}", &{{$pn}}.{{.}}{})
+	g.Register("{{.}}", &target.{{.}}{})
 {{end}}
 	g.Run(os.Stdout)
 }
